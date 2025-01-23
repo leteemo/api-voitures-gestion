@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from .models import Car
 from .serializers import CarSerializer
 from rest_framework import status
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.http import JsonResponse
 from rest_framework.pagination import PageNumberPagination
 
@@ -12,13 +13,16 @@ from rest_framework.pagination import PageNumberPagination
 
 class CarListAPIView(APIView):
     def get(self, request):
-
         cars = Car.objects.all()
 
-        # Sérialiser les données
-        serializer = CarSerializer(cars, many=True)
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get('limit', 10)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        result_page = paginator.paginate_queryset(cars, request)
+
+        serializer = CarSerializer(result_page, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
 
 # Voir les voitures filtrées par marque
 class BrandCarsAPIView(APIView):
@@ -34,6 +38,7 @@ class BrandCarsAPIView(APIView):
         return Response(serializer.data)
 
 class CreateCarAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
 
     def post(self, request):
         # Sérialiser les données envoyées
@@ -49,6 +54,7 @@ class CreateCarAPIView(APIView):
     
 
 class CarDeleteAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
 
     def delete(self, request, car_id):
         try:
@@ -58,3 +64,33 @@ class CarDeleteAPIView(APIView):
         except Car.DoesNotExist:
             return Response({"error": "Car not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
+class UpdateCarAPIView(APIView):
+
+    authentication_classes = [JWTAuthentication]
+
+    def put(self, request, car_id):
+        try:
+            car = Car.objects.get(id=car_id)  # Récupérer la voiture à modifier
+        except Car.DoesNotExist:
+            return Response({"error": "Car not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Sérialiser et valider les données
+        serializer = CarSerializer(car, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, car_id):
+        try:
+            car = Car.objects.get(id=car_id)  # Récupérer la voiture à modifier
+        except Car.DoesNotExist:
+            return Response({"error": "Car not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Sérialiser et valider les données partiellement
+        serializer = CarSerializer(car, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

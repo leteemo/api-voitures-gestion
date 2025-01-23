@@ -6,4 +6,5 @@ urlpatterns = [
     path('brands/', BrandListAPIView.as_view(), name='brands'),
     path('brands/create/', CreateBrandAPIView.as_view(), name='create_brand'),  # Créer une marque
     path('brands/delete/<int:brand_id>/', DeleteBrandAPIView.as_view(), name='delete_brand'), 
+    path('brands/update/<int:brand_id>/', UpdateBrandAPIView.as_view(), name='update_brand'),
 ]
